@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Aplikasi Asesmen Diagnostik Transformasi Geometri</title>
+    
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/dist/tex-mml-chtml.js"></script>
+
+    <style>
+        /* ==========================================================================
+           DESAIN UI/UX (Sesuai Aturan NFR PRD: Navy Blue, Bersih, & Anti-Alay)
+           ========================================================================== */
+        :root {
+            --primary-navy: #1e3a8a;
+            --secondary-blue: #3b82f6;
+            --light-bg: #f3f4f6;
+            --text-dark: #1f2937;
+            --border-color: #d1d5db;
+            --white: #ffffff;
+            --error-red: #dc2626;
+            --success-green: #10b981;
+        }
+
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container { width: 100%; max-width: 600px; }
+        .card { background: var(--white); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); margin-bottom: 20px; }
+        .hidden { display: none !important; }
+        h2, h3 { color: var(--primary-navy); margin-top: 0; }
+        
+        /* Navigasi Tab Login */
+        .tab-system { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; background: none; border: none; font-size: 16px; font-weight: bold; color: #6b7280; cursor: pointer; text-align: center; min-height: 44px; }
+        .tab-btn.active { color: var(--primary-navy); border-bottom: 3px solid var(--primary-navy); }
+
+        /* Form Styling */
+        .input-group { margin-bottom: 16px; text-align: left; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 14px; }
+        .input-group input, .input-group select { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 16px; }
+
+        /* Elemen Sentuh Jempol (Thumb-Friendly) Minimal 44x44px */
+        .thumb-option { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; margin: 6px 0; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: var(--white); font-size: 14px; transition: background 0.2s; }
+        .thumb-option:hover { background: #eff6ff; }
+        .thumb-option input[type="radio"] { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+
+        /* Tombol Utama Minimal 44x44px */
+        button.btn-main { width: 100%; min-height: 44px; background-color: var(--primary-navy); color: var(--white); border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button.btn-main:disabled { background-color: #9ca3af; cursor: not-allowed; }
+
+        /* Kuis & Tier */
+        .quiz-header { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; color: #4b5563; margin-bottom: 12px; border-bottom: 2px solid var(--light-bg); padding-bottom: 8px; }
+        .tier-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+        .tier-title { font-weight: bold; color: var(--primary-navy); margin-bottom: 8px; font-size: 14px; }
+
+        /* Dasbor Guru */
+        .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: #f0f4ff; border: 1px solid #dbeafe; padding: 12px; border-radius: 8px; text-align: center; }
+        .stat-card h4 { margin: 0; color: #1e40af; font-size: 14px; }
+        .stat-card p { margin: 8px 0 0 0; font-size: 24px; font-weight: bold; color: var(--primary-navy); }
+        
+        .monitor-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        .monitor-table th, .monitor-table td { border: 1px solid #e5e7eb; padding: 10px; text-align: left; }
+        .monitor-table th { background-color: #f3f4f6; color: var(--primary-navy); }
+        
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: white; }
+        .badge-progress { background-color: var(--secondary-blue); }
+        .badge-locked { background-color: var(--error-red); }
+        .badge-done { background-color: var(--success-green); }
+
+        .result-item { background: #f0f4ff; border-left: 4px solid var(--primary-navy); padding: 12px; margin-bottom: 14px; border-radius: 0 8px 8px 0; text-align: left; }
+        .anti-select { user-select: none; -webkit-user-select: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div id="auth-screen" class="card">
+        <div class="tab-system">
+            <button id="tab-siswa" class="tab-btn active" onclick="switchRole('siswa')">Portal Siswa</button>
+            <button id="tab-guru" class="tab-btn" onclick="switchRole('guru')">Portal Guru</button>
+        </div>
+
+        <div id="form-siswa">
+            <h2>Masuk Ujian Siswa</h2>
+            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Gunakan NISN resmi dan dapatkan Token aktif dari Guru Anda.</p>
+            <div class="input-group">
+                <label for="siswa-name">Nama Lengkap Siswa</label>
+                <input type="text" id="siswa-name" placeholder="Contoh: Ahmad Fauzi">
+            </div>
+            <div class="input-group">
+                <label for="siswa-nisn">NISN / Username</label>
+                <input type="text" id="siswa-nisn" placeholder="Contoh: 00543211">
+            </div>
+            <div class="input-group">
+                <label for="siswa-token">Token Ujian Aktif</label>
+                <input type="text" id="siswa-token" placeholder="Masukkan 5 digit Token">
+            </div>
+            <button class="btn-main" onclick="loginSiswa()">Mulai Ujian</button>
+        </div>
+
+        <div id="form-guru" class="hidden">
+            <h2>Login Panel Pengawas (Guru)</h2>
+            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Akses khusus Guru untuk Manajemen Token dan Live Monitoring Sesi.</p>
+            <div class="input-group">
+                <label for="guru-user">Username Guru</label>
+                <input type="text" id="guru-user" value="guru" placeholder="Default: guru">
+            </div>
+            <div class="input-group">
+                <label for="guru-pass">Password</label>
+                <input type="password" id="guru-pass" value="guru123" placeholder="Default: guru123">
+            </div>
+            <button class="btn-main" onclick="loginGuru()">Masuk Ke Dasbor</button>
+        </div>
+    </div>
+
+    <div id="quiz-screen" class="card hidden anti-select">
+        <div class="quiz-header">
+            <span id="progress-text">Soal 1 dari 2</span>
+            <span id="warning-count" style="color: var(--error-red);">Peringatan Tab: 0/3</span>
+        </div>
+        
+        <div id="question-text" style="font-size: 16px; line-height: 1.5; margin-bottom: 20px; text-align: left;">
+            </div>
+
+        <div class="tier-box">
+            <div class="tier-title">Tier 1: Pilihan Jawaban Hasil Akhir</div>
+            <div id="tier1-options"></div>
+        </div>
+
+        <div class="tier-box">
+            <div class="tier-title">Tier 2: Justifikasi Teoritis / Alasan</div>
+            <div id="tier2-options"></div>
+        </div>
+
+        <div class="tier-box">
+            <div class="tier-title">Tier 3: Keyakinan Anda Terhadap Pilihan Di Atas</div>
+            <div id="tier3-options">
+                <label class="thumb-option"><input type="radio" name="tier3" value="yakin" onchange="validateForm()"> Yakin</label>
+                <label class="thumb-option"><input type="radio" name="tier3" value="tidak_yakin" onchange="changeSiswaState(); validateForm()"> Tidak Yakin</label>
+            </div>
+        </div>
+
+        <button id="next-btn" class="btn-main" disabled onclick="nextQuestion()">Soal Berikutnya</button>
+    </div>
+
+    <div id="lock-screen" class="card hidden" style="border: 3px solid var(--error-red); text-align: center;">
+        <h2 style="color: var(--error-red);">Sesi Anda Terkunci!</h2>
+        <p>Anda terdeteksi keluar dari layar ujian sebanyak lebih dari 3 kali (membuka chat/browser lain).</p>
+        <p style="font-weight: bold; margin-top: 15px; color: #4b5563;">Status: Silakan lapor ke Guru Pengawas untuk melakukan *Unlock*.</p>
+        <button class="btn-main" style="background-color: #4b5563;" onclick="location.reload()">Kembali ke Login</button>
+    </div>
+
+    <div id="siswa-result-screen" class="card hidden">
+        <h2>Ujian Selesai!</h2>
+        <p style="font-size: 14px; color: #4b5563; margin-bottom: 20px;">Terima kasih. Berikut adalah lembar analisis capaian kognitif mandiri Anda:</p>
+        <div id="diagnostic-summary"></div>
+        <button class="btn-main" onclick="location.reload()">Keluar dari Sesi</button>
+    </div>
+
+
+    <div id="guru-dashboard" class="card hidden" style="max-width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--light-bg); padding-bottom: 10px;">
+            <h2 style="margin: 0;">Dasbor Analitik & Kontrol Guru</h2>
+            <button onclick="location.reload()" style="width: auto; min-height: 34px; margin: 0; padding: 0 12px; font-size: 12px; background: #4b5563;">Log Out</button>
+        </div>
+
+        <div class="tier-box" style="display: flex; justify-content: space-between; align-items: center; background: #fdf2f8; border-color: #fbcfe8;">
+            <div>
+                <span style="font-weight: bold; color: #9d174d; display: block;">Token Sesi Ujian Aktif Hari Ini:</span>
+                <span id="display-token" style="font-size: 24px; font-weight: bold; color: var(--primary-navy);">GEOM1</span>
+            </div>
+            <button id="toggle-token-btn" onclick="toggleToken()" style="width: auto; background-color: var(--error-red); padding: 8px 16px; margin: 0;">Nonaktifkan Token</button>
+        </div>
+
+        <div class="grid-stats">
+            <div class="stat-card">
+                <h4>Siswa Terdeteksi</h4>
+                <p id="stat-total">0</p>
+            </div>
+            <div class="stat-card" style="background: #ecfdf5; border-color: #a7f3d0;">
+                <h4 style="color: #065f46;">Memahami Konsep</h4>
+                <p id="stat-paham" style="color: var(--success-green);">0</p>
+            </div>
+        </div>
+
+        <h3>Live Monitoring Aktivitas Siswa</h3>
+        <p style="font-size: 12px; color: #666; margin: -8px 0 10px 0;">(Gunakan browser mockup ini secara paralel di tab lain untuk melihat perubahan langsung secara instan)</p>
+        <div style="overflow-x: auto;">
+            <table class="monitor-table">
+                <thead>
+                    <tr>
+                        <th>Nama Siswa</th>
+                        <th>NISN</th>
+                        <th>Progres Sesi</th>
+                        <th>Status Layar</th>
+                        <th>Aksi Kontrol</th>
+                    </tr>
+                </thead>
+                <tbody id="monitor-list">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Konfigurasi Database Lokal Sesi & Bank Soal Geometri Berbasis Rumus PRD
+    const bankSoal = [
+        {
+            id: 1,
+            soal: "Titik \\(A(3, 5)\\) dicerminkan terhadap garis \\(x = 2\\). Tentukan koordinat bayangan titik \\(A'\\)!",
+            tier1: [
+                { text: "\\(A'(1, 5)\\)", status: "benar" },
+                { text: "\\(A'(4, 5)\\)", status: "salah" },
+                { text: "\\(A'(-1, 5)\\)", status: "salah" }
+            ],
+            tier2: [
+                { text: "Karena rumus refleksi terhadap garis \\(x=h\\) adalah \\((2h-x, y)\\), sehingga \\((2(2)-3, 5) = (1, 5)\\)", status: "benar" },
+                { text: "Karena posisi \\(x\\) langsung ditambah nilai h \\((x+h, y)\\)", status: "salah" },
+                { text: "Karena absis otomatis berubah tanda minus pada pencerminan koordinat", status: "salah" }
+            ]
+        },
+        {
+            id: 2,
+            soal: "Titik \\(B(-1, 4)\\) ditranslasikan oleh matriks pergeseran \\(T = \\begin{pmatrix} 3 \\\\ -2 \\end{pmatrix}\\). Koordinat bayangan titik \\(B'\\) adalah...",
+            tier1: [
+                { text: "\\(B'(2, 2)\\)", status: "benar" },
+                { text: "\\(B'(-4, 6)\\)", status: "salah" },
+                { text: "\\(B'(3, -8)\\)", status: "salah" }
+            ],
+            tier2: [
+                { text: "Karena konsep translasi melakukan penjumlahan langsung matriks posisi awal dengan pergeseran: \\((-1+3, 4+(-2))\\)", status: "benar" },
+                { text: "Karena komponen matriks harus dikalikan silang satu sama lain", status: "salah" }
+            ]
+        }
+    ];
+
+    let currentIdx = 0;
+    let tabSwitchCount = 0;
+    let currentSiswa = null;
+
+    // Inisialisasi awal token global
+    if(!localStorage.getItem('token_aktif')) localStorage.setItem('token_aktif', 'GEOM1');
+
+    // Mengubah tampilan Tab Login
+    function switchRole(role) {
+        document.getElementById('tab-siswa').classList.toggle('active', role === 'siswa');
+        document.getElementById('tab-guru').classList.toggle('active', role === 'guru');
+        document.getElementById('form-siswa').classList.toggle('hidden', role !== 'siswa');
+        document.getElementById('form-guru').classList.toggle('hidden', role !== 'guru');
+    }
+
+    // AUTH GURU & EVENT ENGINE
+    function loginGuru() {
+        const user = document.getElementById('guru-user').value;
+        const pass = document.getElementById('guru-pass').value;
+        
+        if(user === 'guru' && pass === 'guru123') {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('guru-dashboard').classList.remove('hidden');
+            renderGuruDashboard();
+            
+            // Mekanisme Live Refresh Mockup sinkronisasi tab data tanpa reload halaman manual
+            window.addEventListener('storage', renderGuruDashboard);
+        } else {
+            alert('Akses Ditolak! Username atau Password Salah.');
+        }
+    }
+
+    function toggleToken() {
+        const statusAktif = localStorage.getItem('token_aktif');
+        if(statusAktif) {
+            localStorage.removeItem('token_aktif');
+            document.getElementById('display-token').innerText = "NONAKTIF";
+            document.getElementById('display-token').style.color = "var(--error-red)";
+            document.getElementById('toggle-token-btn').innerText = "Aktifkan Token (GEOM1)";
+            document.getElementById('toggle-token-btn').style.backgroundColor = "var(--success-green)";
+        } else {
+            localStorage.setItem('token_aktif', 'GEOM1');
+            document.getElementById('display-token').innerText = "GEOM1";
+            document.getElementById('display-token').style.color = "var(--primary-navy)";
+            document.getElementById('toggle-token-btn').innerText = "Nonaktifkan Token";
+            document.getElementById('toggle-token-btn').style.backgroundColor = "var(--error-red)";
+        }
+    }
+
+    function renderGuruDashboard() {
+        const monitorList = document.getElementById('monitor-list');
+        monitorList.innerHTML = '';
+        
+        let totalSiswa = 0;
+        let totalPaham = 0;
+
+        // Ambil semua entri pengerjaan siswa dari penyimpanan lokal browser
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('siswa_')) {
+                totalSiswa++;
+                const data = JSON.parse(localStorage.getItem(key));
+                
+                let badgeClass = 'badge-progress';
+                if(data.status === 'Terkunci') badgeClass = 'badge-locked';
+                if(data.status === 'Selesai') badgeClass = 'badge-done';
+                if(data.isPaham) totalPaham++;
+
+                monitorList.innerHTML += `
+                    <tr>
+                        <td><strong>${data.nama}</strong></td>
+                        <td>${data.nisn}</td>
+                        <td>Soal: ${data.progres}</td>
+                        <td><span class="badge ${badgeClass}">${data.status}</span></td>
+                        <td>
+                            ${data.status === 'Terkunci' ? `<button onclick="unlockSiswa('${key}')" style="background:var(--success-green); padding:4px 8px; border:none; color:white; border-radius:4px; font-size:12px; cursor:pointer;">Unlock</button>` : '-'}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        document.getElementById('stat-total').innerText = totalSiswa;
+        document.getElementById('stat-paham').innerText = totalPaham;
+    }
+
+    function unlockSiswa(key) {
+        const data = JSON.parse(localStorage.getItem(key));
+        data.status = 'Mengerjakan';
+        data.warnings = 0;
+        localStorage.setItem(key, JSON.stringify(data));
+        renderGuruDashboard();
+    }
+
+
+    // AUTH SISWA & ALUR TES LINEAR
+    function loginSiswa() {
+        const nama = document.getElementById('siswa-name').value;
+        const nisn = document.getElementById('siswa-nisn').value;
+        const token = document.getElementById('siswa-token').value;
+        const systemToken = localStorage.getItem('token_aktif');
+
+        if(!systemToken) { alert('Sesi ujian belum dibuka oleh guru atau token sudah dinonaktifkan!'); return; }
+        if(token !== systemToken) { alert('Token Ujian tidak valid/salah!'); return; }
+        if(!nama.trim() || !nisn.trim()) { alert('Mohon lengkapi identitas Anda!'); return; }
+
+        // Periksa recovery re-login data lama siswa agar tidak hilang di tengah ujian
+        const savedData = localStorage.getItem('siswa_' + nisn);
+        if(savedData) {
+            const dataObj = JSON.parse(savedData);
+            if(dataObj.status === 'Terkunci') {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('lock-screen').classList.remove('hidden');
+                return;
+            }
+            if(dataObj.status === 'Selesai') {
+                alert('Anda terdeteksi sudah menyelesaikan ujian ini sebelumnya.');
+                return;
+            }
+            currentIdx = dataObj.answers.length;
+            tabSwitchCount = dataObj.warnings;
+        }
+
+        currentSiswa = { nama, nisn, progres: `${currentIdx+1}/${bankSoal.length}`, status: 'Mengerjakan', warnings: tabSwitchCount, answers: [], isPaham: false };
+        localStorage.setItem('siswa_' + nisn, JSON.stringify(currentSiswa));
+
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.remove('hidden');
+        loadQuestion();
+    }
+
+    // Anti-Cheat Engine: Mematikan Klik Kanan Mouse
+    document.addEventListener('contextmenu', e => e.preventDefault());
+
+    // Tab-Switch Engine Detector
+    document.addEventListener('visibilitychange', () => {
+        const quizScreenVisible = !document.getElementById('quiz-screen').classList.contains('hidden');
+        
+        if (quizScreenVisible && document.hidden) {
+            tabSwitchCount++;
+            document.getElementById('warning-count').innerText = `Peringatan Tab: ${tabSwitchCount}/3`;
+            
+            currentSiswa.warnings = tabSwitchCount;
+            
+            if (tabSwitchCount >= 3) {
+                currentSiswa.status = 'Terkunci';
+                localStorage.setItem('siswa_' + currentSiswa.nisn, JSON.stringify(currentSiswa));
+                document.getElementById('quiz-screen').classList.add('hidden');
+                document.getElementById('lock-screen').classList.remove('hidden');
+            } else {
+                localStorage.setItem('siswa_' + currentSiswa.nisn, JSON.stringify(currentSiswa));
+                alert(`Peringatan Keamanan ${tabSwitchCount}/3: Pindah jendela/tab akan otomatis mengunci pengerjaan Anda!`);
+            }
+        }
+    });
+
+    function changeSiswaState() {
+        if(currentSiswa) {
+            localStorage.setItem('siswa_' + currentSiswa.nisn, JSON.stringify(currentSiswa));
+        }
+    }
+
+    function loadQuestion() {
+        const qData = bankSoal[currentIdx];
+        document.getElementById('progress-text').innerText = `Soal ${currentIdx + 1} dari ${bankSoal.length}`;
+        document.getElementById('question-text').innerHTML = qData.soal;
+
+        // Render Pilihan Ganda Konten Tier 1
+        const t1Container = document.getElementById('tier1-options');
+        t1Container.innerHTML = '';
+        qData.tier1.forEach((opt) => {
+            t1Container.innerHTML += `<label class="thumb-option"><input type="radio" name="tier1" value="${opt.status}" onchange="changeSiswaState(); validateForm()"> ${opt.text}</label>`;
+        });
+
+        // Render Pilihan Ganda Justifikasi Teori Tier 2
+        const t2Container = document.getElementById('tier2-options');
+        t2Container.innerHTML = '';
+        qData.tier2.forEach((opt) => {
+            t2Container.innerHTML += `<label class="thumb-option"><input type="radio" name="tier2" value="${opt.status}" onchange="changeSiswaState(); validateForm()"> ${opt.text}</label>`;
+        });
+
+        // Reset Radio Pilihan Keyakinan Tier 3
+        const t3Radios = document.querySelectorAll('input[name="tier3"]');
+        t3Radios.forEach(r => r.checked = false);
+
+        document.getElementById('next-btn').disabled = true;
+        
+        // Memaksa MathJax memproses render simbol matematis baru di layar gawai
+        if (window.MathJax) { MathJax.typesetPromise(); }
+    }
+
+    // Tombol aktif HANYA jika ketiga tier telah diisi (Mekanisme Kunci Navigasi)
+    function validateForm() {
+        const t1 = document.querySelector('input[name="tier1"]:checked');
+        const t2 = document.querySelector('input[name="tier2"]:checked');
+        const t3 = document.querySelector('input[name="tier3"]:checked');
+        document.getElementById('next-btn').disabled = !(t1 && t2 && t3);
+    }
+
+    function nextQuestion() {
+        const t1 = document.querySelector('input[name="tier1"]:checked').value;
+        const t2 = document.querySelector('input[name="tier2"]:checked').value;
+        const t3 = document.querySelector('input[name="tier3"]:checked').value;
+
+        currentSiswa.answers.push({ t1, t2, t3 });
+
+        if (currentIdx < bankSoal.length - 1) {
+            currentIdx++;
+            currentSiswa.progres = `${currentIdx+1}/${bankSoal.length}`;
+            localStorage.setItem('siswa_' + currentSiswa.nisn, JSON.stringify(currentSiswa));
+            loadQuestion();
+        } else {
+            evaluasiMatriksSiswa();
+        }
+    }
+
+    // EVALUASI AKHIR & MATRIX TABEL KEBENARAN DIAGNOSTIK 3-TIER
+    function evaluasiMatriksSiswa() {
+        document.getElementById('quiz-screen').classList.add('hidden');
+        document.getElementById('siswa-result-screen').classList.remove('hidden');
+
+        const summaryDiv = document.getElementById('diagnostic-summary');
+        summaryDiv.innerHTML = '';
+
+        let totalPahamDiSesiIni = true;
+
+        currentSiswa.answers.forEach((ans, index) => {
+            let kategori = "";
+            let interpretasi = "";
+
+            // Implementasi Aturan Konversi Matriks Tabel Kebenaran PRD
+            if (ans.t1 === "benar" && ans.t2 === "benar" && ans.t3 === "yakin") {
+                kategori = "Memahami Konsep";
+                interpretasi = "Siswa menguasai materi, konsep, dan kalkulasi dengan sangat baik dan kokoh.";
+            } else if (ans.t1 === "benar" && ans.t2 === "benar" && ans.t3 === "tidak_yakin") {
+                kategori = "Memahami Konsep tetapi Ragu-ragu";
+                interpretasi = "Siswa memiliki pengetahuan dasar yang benar namun kurang percaya diri.";
+                totalPahamDiSesiIni = false;
+            } else if ((ans.t1 === "benar" && ans.t2 === "salah" && ans.t3 === "yakin") || (ans.t1 === "salah" && ans.t2 === "salah" && ans.t3 === "yakin")) {
+                kategori = "Miskonsepsi";
+                interpretasi = "Siswa memegang intuisi yang keliru secara sistematis dan meyakininya murni. Perlu restrukturisasi berpikir deduktif.";
+                totalPahamDiSesiIni = false;
+            } else if (ans.t1 === "salah" && ans.t2 === "benar" && ans.t3 === "yakin") {
+                kategori = "Tidak Memahami Konsep (Teledor)";
+                interpretasi = "Siswa memahami konsep teorinya dengan benar namun teledor / salah hitung (human error).";
+                totalPahamDiSesiIni = false;
+            } else {
+                kategori = "Tidak Memahami Konsep";
+                interpretasi = "Siswa berspekulasi/menebak acak, bingung struktural, atau sadar sepenuhnya tidak tahu cara pengerjaan.";
+                totalPahamDiSesiIni = false;
+            }
+
+            summaryDiv.innerHTML += `
+                <div class="result-item">
+                    <h4 style="margin: 0 0 4px 0; color: var(--primary-navy);">Soal Nomor ${index + 1}</h4>
+                    <p style="margin: 2px 0; font-size:14px;"><strong>Kategori:</strong> ${kategori}</p>
+                    <p style="margin: 2px 0; font-size: 13px; color: #4b5563;"><strong>Rekomendasi:</strong> ${interpretasi}</p>
+                </div>
+            `;
+        });
+
+        // Update database simulasi agar panel pengawas live guru langsung mendeteksi status "Selesai"
+        currentSiswa.status = 'Selesai';
+        currentSiswa.progres = 'Lengkap';
+        currentSiswa.isPaham = totalPahamDiSesiIni;
+        localStorage.setItem('siswa_' + currentSiswa.nisn, JSON.stringify(currentSiswa));
+    }
+</script>
+
+</body>
+</html>
